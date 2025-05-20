@@ -7,32 +7,22 @@ pub fn main() !void {
 
     const allocator = gpa.allocator();
 
-    {
-        var log = blog.BLog.init(allocator);
-        defer log.deinit();
+    var arg_it = try std.process.argsWithAllocator(allocator);
+    defer arg_it.deinit();
+    _ = arg_it.skip();
 
-        try log.add_category(0, "Info", .TextInfo);
-        try log.add_category(1, "Debug", .TextDebug);
-        try log.add_category(2, "Error", .TextError);
-        try log.add_entry(0, std.time.microTimestamp(), "Hello world!");
-        try log.add_entry(1, std.time.microTimestamp(), "Hello world!");
-        try log.add_entry(2, std.time.microTimestamp(), "Hello world!");
+    const path = arg_it.next() orelse {
+        std.debug.print("Usage: ./blogcat <file.blog>\n", .{});
+        std.posix.exit(1);
+    };
 
-        var file = try std.fs.cwd().createFile("test.blog", .{});
-        defer file.close();
+    var file = try std.fs.cwd().openFile(path, .{});
+    defer file.close();
 
-        try log.write(file.writer().any(), true);
-    }
+    var log = try blog.BLog.parse(allocator, file.reader().any());
+    defer log.deinit();
 
-    {
-        var file = try std.fs.cwd().openFile("test.blog", .{});
-        defer file.close();
-
-        var log = try blog.BLog.parse(allocator, file.reader().any());
-        defer log.deinit();
-
-        for (log.entries.items, 0..) |e, idx| {
-            std.debug.print("{s} Entry: {s}\n", .{ log.categories.get(e.category).?.name, log.get_entry_data(idx) });
-        }
+    for (log.entries.items, 0..) |e, i| {
+        std.io.getStdOut().writer().print("[{s}]: {s}\n", .{ log.categories.get(e.category).?.name, log.get_entry_data(i) }) catch unreachable;
     }
 }

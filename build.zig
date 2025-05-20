@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
     exe_mod.addImport("b_log", lib_mod);
 
     const exe = b.addExecutable(.{
-        .name = "b_log_viewer",
+        .name = "blogcat",
         .root_module = exe_mod,
     });
     b.installArtifact(exe);
